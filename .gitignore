@@ -1,0 +1,6 @@
+*.DBK
+*.PWI
+.vs/
+salida.csv
+**/Debug/
+**/Release/

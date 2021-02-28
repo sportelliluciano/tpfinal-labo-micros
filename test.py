@@ -1,3 +1,41 @@
+# ADC genera 1 muestra cada 104uS
+# Se deberían enviar 10 bits cada 104uS
+# A 115.200bps enviamos 1 bit cada 8.7uS
+# Podríamos enviar 10 bits cada 87uS (por ej: LLLH)
+# 16 bits requieren 139.2uS para enviarse
+# 8 bits requieren 70uS para enviarse
+# 1 ciclo de clock = 0.0625uS
+
+# A 250.000bps enviamos 1 bit cada 4uS
+# 16 bits cada 64uS
+# 32 bits cada 128uS
+
+# 24 bits cada 96uS
+
+# 32 bits = PWM [TsL:TsH TbL:TbH]
+# 
+
+# Si fuera a 115.200bps
+# 24 bits = 
+
+# Si fuera a 250.000bps
+#          |   ID   | ADCL | ADCL
+#          00II HHHH  ; I = ID; H = bit alto
+# 24 bits: ID ADCL ADCL (cada muestra)   // se envian cada 96uS / 104uS
+# 24 bits: ID PWML PWMH (tiempo en alto) // 1 cada 8ms
+# 24 bits: ID PWML PWMH (tiempo en bajo) //
+
+# while (true) {
+#    if pwm: enviar pwm (como mucho cambia 1 vez cada 8ms)
+#    if buffer del adc no esta vacio: enviar adc (cambia 1 vez cada 104uS)
+# }
+# BUFFER DEL ADC: [ ADCL, ADCL, ... ]
+
+# - Bufferear las muestras del ADC en un buffer de (aprox) 10 muestras
+# - Guardamos mediciones del PWM en una variable (no hace falta buffer porque es 1 cada 8ms)
+# - En ISR - TX: transmitir desde el buffer del ADC a menos que haya nueva muestra de PWM.
+
+
 import numpy as np
 from matplotlib import pyplot
 from matplotlib.animation import FuncAnimation
@@ -25,7 +63,7 @@ def hear_port():
     global y_data
     global x_data
     global muestras_por_segundo
-    with serial.Serial('COM5', 115200, timeout=TIMEOUT) as port:
+    with serial.Serial('COM4', 250000, timeout=TIMEOUT) as port:
         t1 = time.time()
         n_muestras = 0
         while True:

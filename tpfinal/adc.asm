@@ -12,7 +12,7 @@ adc_configurar:
 	; ADCSRA: ADEN | ADSC | ADATE | ADIF | ADIE | ADPS2:0
 	;           1      0      1       -      1      111
 	; ADEN    = 1   -- Habilitar ADC
-	; ADSC    = 0   -- Iniciar conversión
+	; ADSC    = 1   -- Iniciar conversión
 	; ADATE   = 1   -- Activar trigger automático
 	; ADIE    = 1   -- Habilitar interrupción de conversión completa
 	; ADPS2:0 = 111 -- Preescaler = 128 (125kHz @ 16MHz; 62.5kHz @ 8Mhz)

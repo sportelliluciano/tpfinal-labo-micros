@@ -1,4 +1,9 @@
-.equ UBRR_BPS = (CLK_FREC_MHZ * 1000000)/16/38400 - 1
+;.equ UBRR_BPS = (CLK_FREC_MHZ * 1000000)/16/38400 - 1
+.equ UBRR_BPS = ((CLK_FREC_MHZ * 1000000) / 4 / 115200 - 1) / 2
+
+.if UBRR_BPS > 4095
+ .error "UBRR_BPS debe ser menor que 4095"
+.endif
 
 usart_configurar:
     ldi r16, LOW(UBRR_BPS)
@@ -6,6 +11,9 @@ usart_configurar:
     ldi r16, HIGH(UBRR_BPS)   ; Configurar baud rate
     sts UBRR0H, r16
     
+	ldi r16, (1 << U2X0)
+	sts UCSR0A, r16
+
     ; Activar transmisión y recepción USART.
     ldi r16, (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0) | (1 << UDRIE0)
     sts UCSR0B, r16

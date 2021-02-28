@@ -98,11 +98,13 @@ isr_usart_rx:
 
 isr_usart_tx:
 	in sreg_save, SREG
+	; 0000 00xx xxxx xxxx
+	; 1100 00xx {  adcl }
 
-	sbrc last_adch, 7   ; Si last_adch.7 == 1 -> transmitir byte bajo
-	rjmp isr_usart_tx_low
 	sbrc last_adch, 6   ; Si last_adch.6 == 1 -> esta muestra ya fue transmitida
 	rjmp isr_usart_tx_fin
+	sbrc last_adch, 7   ; Si last_adch.7 == 1 -> transmitir byte bajo
+	rjmp isr_usart_tx_low
 	sts UDR0, last_adch ; sino -> transmitir byte alto
 	
 	ldi r16, 0b10000000 ; setear last_adch.7 = 1
@@ -114,6 +116,10 @@ isr_usart_tx_low:
 	or last_adch, r16
 	; Iniciar siguiente conversión
 	call adc_iniciar_conversion
+	; Desactivar UDRIE0
+	lds r16, UCSR0B
+	andi r16, ~(1 << UDRIE0)
+	sts UCSR0B, r16
 isr_usart_tx_fin:
 	out SREG, sreg_save
 	reti
@@ -122,5 +128,9 @@ isr_adc:
 	in sreg_save, SREG
 	lds last_adcl, ADCL
 	lds last_adch, ADCH
+	; Activar UDRIE0
+	lds r16, UCSR0B
+	ori r16, (1 << UDRIE0)
+	sts UCSR0B, r16
 	out SREG, sreg_save
 	reti

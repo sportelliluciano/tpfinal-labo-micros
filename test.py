@@ -25,7 +25,7 @@ def hear_port():
     global y_data
     global x_data
     global muestras_por_segundo
-    with serial.Serial('COM4', 38400, timeout=TIMEOUT) as port:
+    with serial.Serial('COM5', 115200, timeout=TIMEOUT) as port:
         t1 = time.time()
         n_muestras = 0
         while True:

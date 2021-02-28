@@ -16,7 +16,7 @@
 # 
 
 # Si fuera a 115.200bps
-# 24 bits = 
+# 24 bits = 208uS
 
 # Si fuera a 250.000bps
 #          |   ID   | ADCL | ADCL

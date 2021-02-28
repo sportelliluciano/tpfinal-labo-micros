@@ -1,24 +1,21 @@
-.equ CLK_FREC_MHZ = 16
+.equ CLK_FREC_MHZ = 8
 
 .def retl = r0 ; Byte bajo de retornos
 .def reth = r1 ; Byte alto de retornos
 .def zero = r2 ; Registro que siempre vale 0
 .def sreg_save = r3 ; Registro que almacena SREG durante ISRs.
 .def last_adch = r4 ; Última medición del ADC (high)
-.def last_adcl = r5 ; Última medición del ADC (low)
-
-.dseg
-.org SRAM_START
-ULTIMO_TH: .byte 2 ; Tiempo en alto de la señal PWM (en ticks)
-ULTIMO_TL: .byte 2 ; Tiempo en bajo de la señal PWM (en ticks)
+.def last_adcl1 = r5 ; Última medición del ADC (low)
+.def last_adcl2 = r9
+.def paq1 = r6
+.def paq2 = r7
+.def paq3 = r8
 
 .cseg
 .org 0x0000
 	rjmp main
 .org INT0Addr
 	rjmp isr_int0
-.org URXCaddr
-    rjmp isr_usart_rx
 .org UDREaddr
     rjmp isr_usart_tx
 .org ADCCaddr
@@ -32,6 +29,7 @@ ULTIMO_TL: .byte 2 ; Tiempo en bajo de la señal PWM (en ticks)
 .include "timer.asm"
 .include "usart.asm"
 
+.include "buffer.asm"
 .include "delay.asm"
 
 main:
@@ -40,17 +38,30 @@ main:
     out SPH, r16
 	ldi r16, LOW(RAMEND)
     out SPL, r16
-    ; ----------------- setup ------------------
+    ; ------------ setup inicial --------------
 	clr zero
 
 	call io_configurar
-    call pwm_configurar
 	call usart_configurar
+	; ------------------------------------------
+esperar_inicio:
+	; Esperar a que la PC nos envíe algo para iniciar el programa.
+	sbi PORTB, DDB5
+	ldi r16, 250
+	call delayms
+	cbi PORTB, DDB5
+	ldi r16, 250
+	call delayms
+	lds r16, UCSR0A     ; while !rx_buffer_full() {
+    andi r16, 1 << RXC0 ;     ;
+    breq esperar_inicio     ; }
+    lds r16, UDR0       ; Descartar byte recibido
+	; ---------------- setup -------------------
+    call pwm_configurar
 	call adc_configurar
 	call timer_configurar
-	sei                    ; Habilitar interrupciones
+	sei
 	; ------------------------------------------
-    
 main_loop:
     rjmp main_loop
 
@@ -61,61 +72,30 @@ isr_int0:
 	call timer_capturar  ; Copiar el valor del timer
 	call timer_reiniciar ; Reiniciar timer
 
-	push XH
-	push XL
-	
-	sbis PIND, DDD2              ; if ! is_rising_edge() {
-	rjmp isr_int0_capturar_td    ;     capturar_tiempo_high
-	ldi XH, HIGH(ULTIMO_TL)      ; } else {
-	ldi XL, LOW(ULTIMO_TL)       ;     capturar_tiempo_low
-	st X+, retl
-	st X+, reth
-	rjmp isr_int0_fin            ; }
+	push r16
+	sbis PIND, DDD2              ; if ! is_rising_edge()
+	rjmp isr_int0_capturar_td    ;     goto capturar_tiempo_high
+	ldi r16, 0b00100000          ; id = 10 
+	rjmp isr_int0_flush          ; goto flush
 isr_int0_capturar_td:
-	ldi XH, HIGH(ULTIMO_TH)
-	ldi XL, LOW(ULTIMO_TH)
-	st X+, retl
-	st X+, reth
-	; fallthrough
-isr_int0_fin:
-	pop XL
-	pop XH
-	out SREG, sreg_save
-	reti
-
-; ISR - USART
-isr_usart_rx:
-	in sreg_save, SREG
-	; RX: 0x01 = Leer TL
-	;     0x02 = Leer TH
-	;     0x04 = ADC Status (0 = off, 1 = on)
-	
-	; lds r16, UDR0
-	; call usart_transmitir
-
-	out SREG, sreg_save
+	ldi r16, 0b00110000          ; id = 11
+isr_int0_flush:                  ; flush
+	mov paq1, r16
+	mov paq2, reth
+	mov paq3, retl
+	call push_packet             ; push_packet(id, reth, retl)
+	out SREG, sreg_save          
+	pop r16
 	reti
 
 isr_usart_tx:
 	in sreg_save, SREG
-	; 0000 00xx xxxx xxxx
-	; 1100 00xx {  adcl }
-
-	sbrc last_adch, 6   ; Si last_adch.6 == 1 -> esta muestra ya fue transmitida
+	call buffer_get_byte
+	sbrc reth, 7                    ; if reth.7:
+	rjmp isr_usart_tx_sin_datos     ;     goto sin datos
+	sts UDR0, retl
 	rjmp isr_usart_tx_fin
-	sbrc last_adch, 7   ; Si last_adch.7 == 1 -> transmitir byte bajo
-	rjmp isr_usart_tx_low
-	sts UDR0, last_adch ; sino -> transmitir byte alto
-	
-	ldi r16, 0b10000000 ; setear last_adch.7 = 1
-	or last_adch, r16
-	rjmp isr_usart_tx_fin
-isr_usart_tx_low:
-	sts UDR0, last_adcl
-	ldi r16, 0b11000000 ; setear last_adch.7:6 = 1
-	or last_adch, r16
-	; Iniciar siguiente conversión
-	call adc_iniciar_conversion
+isr_usart_tx_sin_datos:
 	; Desactivar UDRIE0
 	lds r16, UCSR0B
 	andi r16, ~(1 << UDRIE0)
@@ -124,13 +104,89 @@ isr_usart_tx_fin:
 	out SREG, sreg_save
 	reti
 
+; Agrega un paquete de 3 bytes al bufer de transmisión
+; Los 3 bytes se obtienen de los registros paq1, paq2, paq3.
+;
+; El paquete de transmisión siempre tiene el siguiente formato:
+; 00II DDDD DDDD DDDD DDDD DDDD
+; Donde I representa un bit correspondiente al ID de paquete,
+; y D representa un bit de datos.
+;
+; Hay 3 posibles paquetes:
+; - Paquete de datos de ADC: contiene dos muestras del ADC
+; 0001 AABB AAAA AAAA BBBB BBBB
+; Donde:
+;  - El ID es 01
+;  - A representa un bit de la primer muestra, siendo el bit 
+;    más a la izquierda el más significativo.
+;  - B representa un bit de la segunda muestra, siendo el bit
+;    más a la izquierda el más significativo.
+; La primera muestra se debe haber obtenido temporalmente antes
+; que la segunda.
+;
+; - Paquete de datos del PWM (1): contiene el tiempo que la señal
+;   del PWM está en nivel lógico bajo.
+;   0010 0000 HHHH HHHH LLLL LLLL
+; Donde:
+;   - El ID es 10
+;   - H representa bits del byte alto, L del byte bajo, siendo el
+;     bit de más a la izquierda el más significativo.
+;
+; - Paquete de datos del PWM (2): contiene el tiempo que la señal
+;   del PWM está en nivel lógico alto.
+;   0011 0000 HHHH HHHH LLLL LLLL
+; Donde:
+;   - El ID es 11
+;   - H representa bits del byte alto, L del byte bajo, siendo el
+;     bit de más a la izquierda el más significativo.
+;
+; Un paquete que no empiece en 00 será rechazado por el host.
+push_packet:
+	push r24
+	call buffer_push_packet
+	sbrc reth, 7 ; if reth.7 == 1:
+	rjmp pp_drop ;     goto paquete_droppeado
+
+	; Activar UDRIE0 cv.notify
+	lds r24, UCSR0B
+	ori r24, (1 << UDRIE0)
+	sts UCSR0B, r24
+	rjmp pp_fin
+pp_drop:
+	sbi PORTB, 5 ; DEBUG: Encender led de packet dropped
+pp_fin:
+	pop r24
+	ret
+
 isr_adc:
 	in sreg_save, SREG
-	lds last_adcl, ADCL
-	lds last_adch, ADCH
-	; Activar UDRIE0
-	lds r16, UCSR0B
-	ori r16, (1 << UDRIE0)
-	sts UCSR0B, r16
+	push r16
+	
+	; last_adch = 0000 0000
+	sbrc last_adch, 7        ; if last_adch.7: goto save_second
+	rjmp isr_adc_save_second
+	; else: save_first
+	lds last_adcl1, ADCL ; Leer el low primero
+	lds r16, ADCH 
+	ori r16, (1 << 7)
+	mov last_adch, r16   ; last_adch = 0b10000000 | ADCH
+	rjmp isr_adc_fin
+
+isr_adc_save_second:
+	lds last_adcl2, ADCL ; Leer el low primero
+	lsl last_adch
+	lsl last_adch
+	lds r16, ADCH        ; r16 = (last_adch << 2) | ADCH
+	or r16, last_adch
+
+	; Push packet to tx queue: 0001 AABB AAAA AAAA BBBB BBBB
+	ori r16, 0b00010000 ; Agregar ID
+	mov paq1, r16
+	mov paq2, last_adcl1
+	mov paq3, last_adcl2
+	call push_packet
+
+isr_adc_fin:
+	pop r16
 	out SREG, sreg_save
 	reti

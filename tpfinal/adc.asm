@@ -16,7 +16,7 @@ adc_configurar:
 	; ADATE   = 1   -- Activar trigger automático
 	; ADIE    = 1   -- Habilitar interrupción de conversión completa
 	; ADPS2:0 = 111 -- Preescaler = 128 (125kHz @ 16MHz; 62.5kHz @ 8Mhz)
-	ldi r16, (1 << ADEN) | (1 << ADSC) | (0 << ADATE) | \
+	ldi r16, (1 << ADEN) | (1 << ADSC) | (1 << ADATE) | \
 	         (1 << ADIE) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0)
 	sts ADCSRA, r16
 

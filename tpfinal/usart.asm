@@ -1,5 +1,4 @@
-;.equ UBRR_BPS = (CLK_FREC_MHZ * 1000000)/16/38400 - 1
-.equ UBRR_BPS = ((CLK_FREC_MHZ * 1000000) / 4 / 38400 - 1) / 2
+.equ UBRR_BPS = ((CLK_FREC_MHZ * 1000000) / 4 / 115200 - 1) / 2
 
 .if UBRR_BPS > 4095
  .error "UBRR_BPS debe ser menor que 4095"
@@ -15,7 +14,7 @@ usart_configurar:
 	sts UCSR0A, r16
 
     ; Activar transmisión y recepción USART.
-    ldi r16, (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0) | (1 << UDRIE0)
+    ldi r16, (1 << RXEN0) | (1 << TXEN0) | (1 << UDRIE0)
     sts UCSR0B, r16
     
     ; 8 bits de datos, sin paridad, 1 bit de parada (8N1)
@@ -23,10 +22,14 @@ usart_configurar:
     sts UCSR0C, r16
     ret
 
+
+; Entrada: r16 - Byte a transmitir
 usart_transmitir:
-	; Entrada: r16 - Byte a transmitir
-    lds r17, UCSR0A      ; while !tx_buffer_empty() {
-    andi r17, 1 << UDRE0 ;     ;
-    breq usart_transmitir  ; }
-    sts UDR0, r16        ; tx_buffer = r16
+	push r17
+usart_transmitir_loop:
+    lds r17, UCSR0A            ; while !tx_buffer_empty() {
+    andi r17, 1 << UDRE0       ;     ;
+    breq usart_transmitir_loop ; }
+    sts UDR0, r16              ; tx_buffer = r16
+	pop r17
     ret

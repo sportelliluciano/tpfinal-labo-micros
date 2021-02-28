@@ -1,5 +1,5 @@
 timer_configurar:
-	; Configurar el timer 1 en modo normal, con ticks cada 64uS, overflow cada 4.19 seg.
+	; Configurar el timer 1 en modo normal, con ticks cada 0.5uS, overflow cada 32.768ms
 
     ; WGM11 = WGM10 = 0 (modo normal)
     ; COM1A1 = COM1A0 = COM1B1 = COM1B0 = 0 (salidas desconectadas)

@@ -45,10 +45,12 @@ _delay1ms:
 ; r16 = Tiempo de retardo en milisegundos, 0 equivale a 256ms.
 delayms:
 	push r21 ; Guardar registros extra >= 16 (r21 usado por _delay1ms)
+	push r8
  delayms_loop:
 	call _delay1ms
     dec r16
     brne delayms_loop
 
+	pop r8
 	pop r21 ; Restaurar registros
     ret

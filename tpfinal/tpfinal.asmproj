@@ -83,6 +83,9 @@
     <Compile Include="adc.asm">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="buffer.asm">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="delay.asm">
       <SubType>Code</SubType>
     </Compile>

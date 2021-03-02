@@ -1,4 +1,4 @@
-.equ CLK_FREC_MHZ = 8
+.equ CLK_FREC_MHZ = 16
 
 .def retl = r0 ; Byte bajo de retornos
 .def reth = r1 ; Byte alto de retornos
@@ -43,6 +43,7 @@ main:
 
 	call io_configurar
 	call usart_configurar
+	call buffer_init
 	; ------------------------------------------
 esperar_inicio:
 	; Esperar a que la PC nos envíe algo para iniciar el programa.
@@ -168,6 +169,7 @@ isr_adc:
 	; else: save_first
 	lds last_adcl1, ADCL ; Leer el low primero
 	lds r16, ADCH 
+	andi r16, 0b00000011 ; Asegurarse que los bits más significativos son 0.
 	ori r16, (1 << 7)
 	mov last_adch, r16   ; last_adch = 0b10000000 | ADCH
 	rjmp isr_adc_fin
@@ -177,6 +179,7 @@ isr_adc_save_second:
 	lsl last_adch
 	lsl last_adch
 	lds r16, ADCH        ; r16 = (last_adch << 2) | ADCH
+	andi r16, 0b00000011 ; Asegurarse que los bits más significativos son 0.
 	or r16, last_adch
 
 	; Push packet to tx queue: 0001 AABB AAAA AAAA BBBB BBBB

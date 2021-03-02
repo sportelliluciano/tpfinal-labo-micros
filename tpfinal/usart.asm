@@ -1,4 +1,4 @@
-.equ UBRR_BPS = ((CLK_FREC_MHZ * 1000000) / 4 / 115200 - 1) / 2
+.equ UBRR_BPS = ((CLK_FREC_MHZ * 1000000) / 4 / 250000 - 1) / 2
 
 .if UBRR_BPS > 4095
  .error "UBRR_BPS debe ser menor que 4095"

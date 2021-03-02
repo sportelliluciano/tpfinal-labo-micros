@@ -72,7 +72,7 @@ def hear_port():
     global y_data
     global x_data
     global muestras_por_segundo
-    with serial.Serial('COM5', 115200, timeout=TIMEOUT) as port:
+    with serial.Serial('COM4', 250000, timeout=TIMEOUT) as port:
         time.sleep(3)
         port.write(b'L') # Enviar un byte para iniciar el programa
         t1 = time.time()

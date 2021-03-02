@@ -8,6 +8,11 @@
 BUFFER: .byte BUFFER_SZ     ; Búfer de 256 bytes = se aprovecha el overflow de enteros de 8 bits.
 
 .cseg
+buffer_init:
+	clr buffer_head
+	clr buffer_tail
+	ret
+
 ; Copia paq1:paq2:paq3 al buffer
 ; Devuelve 0 si había espacio, FFFF en caso contrario.
 buffer_push_packet:

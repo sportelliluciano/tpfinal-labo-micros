@@ -10,7 +10,8 @@
 .dseg 
 .equ PACKET_SZ = 4          ; 3 bytes + padding, debe ser potencia de 2
 .equ BUFFER_SZ = (1 << 8)   ; 256 bytes = 64 paquetes
-BUFFER: .byte BUFFER_SZ     ; Búfer de 256 bytes = se aprovecha el overflow de enteros de 8 bits.
+BUFFER: .byte BUFFER_SZ     ; Búfer de 256 bytes = se aprovecha el 
+                            ; overflow de enteros de 8 bits.
 
 .cseg
 usart_configurar:
@@ -48,8 +49,8 @@ usart_push_packet:
 	add r26, buffer_head         ; r26 = buffer_head + 4
 	mov r27, buffer_tail
 	andi r27, ~(PACKET_SZ - 1)   ; r27 = buffer_tail & 0b11111100
-	cp r26, r27                  ; if buffer_head + 4 == buffer_tail & 0b11111100: no hay espacio
-	breq upp_sin_espacio
+	cp r26, r27                  ; if buffer_head + 4 == buffer_tail & 0b11111100:
+	breq upp_sin_espacio         ;     no hay espacio
 	
 	ldi XL, LOW(BUFFER)
 	ldi XH, HIGH(BUFFER)

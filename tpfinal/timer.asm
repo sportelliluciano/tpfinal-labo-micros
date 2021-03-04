@@ -20,7 +20,7 @@ timer_configurar:
 timer_capturar:
 	; Generar un evento de captura por software
 	cbi PORTB, DDB0    ; El timer captura en el falling edge
-	sbi PORTB, DDB0    ; Volver a subir el pin para la próxima captura
+	sbi PORTB, DDB0    ; Volver a subir el pin para la prÃ³xima captura
 
 	; Copiar ICR1 en r0:r1
 	lds retl, ICR1L

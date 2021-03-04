@@ -1,41 +1,3 @@
-# ADC genera 1 muestra cada 104uS
-# Se deberían enviar 10 bits cada 104uS
-# A 115.200bps enviamos 1 bit cada 8.7uS
-# Podríamos enviar 10 bits cada 87uS (por ej: LLLH)
-# 16 bits requieren 139.2uS para enviarse
-# 8 bits requieren 70uS para enviarse
-# 1 ciclo de clock = 0.0625uS
-
-# A 250.000bps enviamos 1 bit cada 4uS
-# 16 bits cada 64uS
-# 32 bits cada 128uS
-
-# 24 bits cada 96uS
-
-# 32 bits = PWM [TsL:TsH TbL:TbH]
-# 
-
-# Si fuera a 115.200bps
-# 24 bits = 208uS
-
-# Si fuera a 250.000bps
-#          |   ID   | ADCL | ADCL
-#          00II HHHH  ; I = ID; H = bit alto
-# 24 bits: ID ADCL ADCL (cada muestra)   // se envian cada 96uS / 104uS
-# 24 bits: ID PWML PWMH (tiempo en alto) // 1 cada 8ms
-# 24 bits: ID PWML PWMH (tiempo en bajo) //
-
-# while (true) {
-#    if pwm: enviar pwm (como mucho cambia 1 vez cada 8ms)
-#    if buffer del adc no esta vacio: enviar adc (cambia 1 vez cada 104uS)
-# }
-# BUFFER DEL ADC: [ ADCL, ADCL, ... ]
-
-# - Bufferear las muestras del ADC en un buffer de (aprox) 10 muestras
-# - Guardamos mediciones del PWM en una variable (no hace falta buffer porque es 1 cada 8ms)
-# - En ISR - TX: transmitir desde el buffer del ADC a menos que haya nueva muestra de PWM.
-
-
 import numpy as np
 from matplotlib import pyplot
 from matplotlib.animation import FuncAnimation
@@ -55,15 +17,20 @@ line, = pyplot.plot(x_data, y_data, '-')
 pwm_line, = pyplot.plot(x_data, pwm_data, '-')
 scatter = pyplot.scatter(x_data, y_data)
 
-muestras_por_segundo = 100
-
-TIMEOUT=10 # Si no hay datos por 1 segundo terminar
+TIMEOUT = 10 # Si no hay datos por 10 segundos terminar
 BUFFER_SIZE = 20480 # No más de 20480 muestras en buffer
 
 FCPU = 16000000
 TIME_BETWEEN_SAMPLES = (128 / FCPU) * 13.5
 SAMPLES_PER_SECOND = int(1/TIME_BETWEEN_SAMPLES)
 SAMPLES_OFFSET = int(0.005 * SAMPLES_PER_SECOND)
+PORT = 'COM4'
+BAUD_RATE = 230400
+WAIT_BEFORE_START = 3  # El Arduino se reinicia a abrir el puerto:
+                       #  - Esperar WAIT_BEFORE_START segundos antes de empezar.
+
+# Resolución del tick del PWM
+PWM_RESOLUTION_MS = 0.5e-3
 
 def hear_port():
     pwm_is_low = False
@@ -71,12 +38,11 @@ def hear_port():
     last_thigh = 0    
     global y_data
     global x_data
-    global muestras_por_segundo
-    with serial.Serial('COM4', 230400, timeout=TIMEOUT) as port:
-        time.sleep(3)
+    
+    with serial.Serial(PORT, BAUD_RATE, timeout=TIMEOUT) as port:
+        time.sleep(WAIT_BEFORE_START)
         port.write(b'L') # Enviar un byte para iniciar el programa
         t1 = time.time()
-        n_muestras = 0
         last_adc_packets = adc_packets = 0
         last_pwm_packets = pwm_packets = 0
         while True:
@@ -103,37 +69,49 @@ def hear_port():
                     y_data.append(adc_val * 5.0 / 1024)
                     x_data.append(x_data[-1] + TIME_BETWEEN_SAMPLES)
                     pwm_data.append(5 * pwm_is_low)
-                    n_muestras += 1
+
                 adc_packets += 1
             elif tag == 0b00100000: # Flanco ascendente
                 # TL del PWM
                 tlow, = struct.unpack(">H", data[1:])
                 if abs(tlow - last_tlow) > 10:
                     last_tlow = tlow
-                    print('PWM Tlow:', tlow * 0.5e-3, 'ms')
-                pwm_is_low = False # not pwm_is_low
+                    print('PWM Tlow:', tlow * PWM_RESOLUTION_MS, 'ms')
+                pwm_is_low = False
                 pwm_packets += 1
             elif tag == 0b00110000: # Flanco descendente
                 # TH del PWM
                 thigh, = struct.unpack(">H", data[1:])
                 if abs(thigh - last_thigh) > 10:
                     last_thigh = thigh
-                    print('PWM Thigh:', thigh * 0.5e-3, 'ms')
-                pwm_is_low = True # not pwm_is_low
+                    print('PWM Thigh:', thigh * PWM_RESOLUTION_MS, 'ms')
+                pwm_is_low = True
                 pwm_packets += 1
             
             if time.time() - t1 > 1:
-                muestras_por_segundo = n_muestras
-                n_muestras = 0
                 t1 = time.time()
+                adc_packets_seg = adc_packets - last_adc_packets
+                pwm_packets_seg = pwm_packets - last_pwm_packets
+                # 24 bits por paquete + 3 bits de inicio + 3 de parada
+                bits_per_seg = (adc_packets_seg + pwm_packets_seg) * (24 + 3 + 3)
                 print(f'{adc_packets=}, {pwm_packets=},', 
-                      f'ADC: {2 * (adc_packets - last_adc_packets)} muestras/seg,',
-                      f'PWM: {pwm_packets - last_pwm_packets} muestras/seg,',
-                      f'{(adc_packets - last_adc_packets + pwm_packets - last_pwm_packets)*30} bps')
+                      f'ADC: {2 * adc_packets_seg} muestras/seg,',
+                      f'PWM: {pwm_packets_seg} muestras/seg,',
+                      f'{bits_per_seg} bps')
                 last_adc_packets = adc_packets
                 last_pwm_packets = pwm_packets
 
 def find_trigger(samples, level=1.5, number=1, default=0):
+    '''
+    Simulación simple del disparo de un osciloscopio en base al
+    nivel y flanco ascendente de la señal.
+
+    Devuelve el índice de la primer muestra que esté detrás de
+    de `number` flancos ascendentes con valor superior a `level`.
+
+    Si no se cumple para ninguna muestra se devolverá el valor
+    `default`.
+    '''
     trigger_edge = 'rising'
     trigger_id = 0
     for i, sample in enumerate(samples[:-1]):
@@ -141,10 +119,11 @@ def find_trigger(samples, level=1.5, number=1, default=0):
             if trigger_id == number:
                 return i
             else:
-                trigger_id += 1           #  Si se detectó el un trigger en el rising edge...
-                trigger_edge = 'falling'  #  ...esperar un trigger en el falling edge...
+                trigger_id += 1          #  Si se detectó el un trigger en el rising edge...
+                trigger_edge = 'falling' #  ...esperar un trigger en el falling edge...
         elif trigger_edge == 'falling' and samples[i+1] < sample and sample >= level: 
-            trigger_edge = 'rising'       # ...para finalmente detectar el siguiente trigger en el rising edge.
+            trigger_edge = 'rising'      # ...para finalmente detectar el siguiente 
+                                         # trigger en el rising edge.
     return default
 
 def update(frame):
@@ -152,14 +131,15 @@ def update(frame):
     global y_data
     global pwm_data
 
-    #final_trigger = len(y_data) - find_trigger(list(reversed(y_data)), number=1)
-    #initial_trigger = len(y_data) - find_trigger(list(reversed(y_data)), number=3, default=len(y_data))
-
-    final_trigger = len(pwm_data) - find_trigger(list(reversed(pwm_data)), number=1)
-    initial_trigger = len(pwm_data) - find_trigger(list(reversed(pwm_data)), number=3, default=len(pwm_data))
+    final_trigger = len(pwm_data) - find_trigger(list(reversed(pwm_data)), 
+                                                 number=1)
+    initial_trigger = len(pwm_data) - find_trigger(list(reversed(pwm_data)), 
+                                                   number=3, 
+                                                   default=len(pwm_data))
 
     t_primer_muestra = x_data[initial_trigger]
-    t_data = [ 1000 * (t_muestra - t_primer_muestra) for t_muestra in x_data[initial_trigger:final_trigger] ]
+    t_data = [ 1000 * (t_muestra - t_primer_muestra) \
+               for t_muestra in x_data[initial_trigger:final_trigger] ]
 
     line.set_data(t_data, y_data[initial_trigger:final_trigger])
     pwm_line.set_data(t_data, pwm_data[initial_trigger:final_trigger])

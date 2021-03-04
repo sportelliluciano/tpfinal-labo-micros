@@ -4,3 +4,5 @@
 salida.csv
 **/Debug/
 **/Release/
+*.mp4
+*.pdf

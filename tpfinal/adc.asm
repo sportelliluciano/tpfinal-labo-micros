@@ -22,14 +22,3 @@ adc_configurar:
 
 	; ACSRB = 0 -- Free running mode
 	ret
-
-adc_iniciar_conversion:
-	push r16
-adcic_esperar_conversion:
-	lds r16, ADCSRA
-	sbrc r16, ADSC
-	rjmp adcic_esperar_conversion
-	ori r16, (1 << ADSC)
-	sts ADCSRA, r16
-	pop r16
-	ret

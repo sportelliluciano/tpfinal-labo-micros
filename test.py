@@ -72,7 +72,7 @@ def hear_port():
     global y_data
     global x_data
     global muestras_por_segundo
-    with serial.Serial('COM4', 250000, timeout=TIMEOUT) as port:
+    with serial.Serial('COM4', 230400, timeout=TIMEOUT) as port:
         time.sleep(3)
         port.write(b'L') # Enviar un byte para iniciar el programa
         t1 = time.time()
@@ -105,21 +105,21 @@ def hear_port():
                     pwm_data.append(5 * pwm_is_low)
                     n_muestras += 1
                 adc_packets += 1
-            elif tag == 0b00100000:
+            elif tag == 0b00100000: # Flanco ascendente
                 # TL del PWM
                 tlow, = struct.unpack(">H", data[1:])
                 if abs(tlow - last_tlow) > 10:
                     last_tlow = tlow
                     print('PWM Tlow:', tlow * 0.5e-3, 'ms')
-                pwm_is_low = not pwm_is_low
+                pwm_is_low = False # not pwm_is_low
                 pwm_packets += 1
-            elif tag == 0b00110000:
+            elif tag == 0b00110000: # Flanco descendente
                 # TH del PWM
                 thigh, = struct.unpack(">H", data[1:])
                 if abs(thigh - last_thigh) > 10:
                     last_thigh = thigh
                     print('PWM Thigh:', thigh * 0.5e-3, 'ms')
-                pwm_is_low = not pwm_is_low
+                pwm_is_low = True # not pwm_is_low
                 pwm_packets += 1
             
             if time.time() - t1 > 1:
@@ -128,7 +128,8 @@ def hear_port():
                 t1 = time.time()
                 print(f'{adc_packets=}, {pwm_packets=},', 
                       f'ADC: {2 * (adc_packets - last_adc_packets)} muestras/seg,',
-                      f'PWM: {pwm_packets - last_pwm_packets} muestras/seg')
+                      f'PWM: {pwm_packets - last_pwm_packets} muestras/seg,',
+                      f'{(adc_packets - last_adc_packets + pwm_packets - last_pwm_packets)*30} bps')
                 last_adc_packets = adc_packets
                 last_pwm_packets = pwm_packets
 

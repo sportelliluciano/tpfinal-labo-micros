@@ -7,29 +7,26 @@ timer_configurar:
     sts TCCR1A, zero
 
     ; WGM12 = WGM13 = 0 (modo normal)
-    ; CS12 = 0, CS11 = 1, CS10 = 0 (preescaler 1024)
+    ; CS12 = 0, CS11 = 1, CS10 = 0 (preescaler 8)
 	; ICNC1 = 0 (noise canceler desactivado)
 	; ICES1 = 0 (falling edge trigger)
 	ldi r16, (0 << CS12) | (1 << CS11) | (0 << CS10) \
 			 | (0 << WGM13) | (0 << WGM12) \
 			 | (0 << ICNC1) | (0 << ICES1)
     sts TCCR1B, r16
-
 	ret
 
-; Reinicia el timer a 0
-timer_reiniciar:
-	sts TCNT1H, zero
-	sts TCNT1L, zero
-	ret
-
-; Copia el valor actual del timer en r0:r1
+; Devuelve el valor actual del timer 1 y lo reinicia a 0
 timer_capturar:
 	; Generar un evento de captura por software
-	cbi PORTB, DDB0
-	sbi PORTB, DDB0
+	cbi PORTB, DDB0    ; El timer captura en el falling edge
+	sbi PORTB, DDB0    ; Volver a subir el pin para la próxima captura
 
 	; Copiar ICR1 en r0:r1
 	lds retl, ICR1L
 	lds reth, ICR1H
+
+	; Reiniciar timer
+	sts TCNT1H, zero
+	sts TCNT1L, zero
 	ret

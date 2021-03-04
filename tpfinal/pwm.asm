@@ -7,7 +7,7 @@ pwm_configurar:
 	; Referencia: Datasheet 14.7.3 (página 80)
 
     ; Duty inicial = 50%
-    ldi r16, 0x7F   ; Ver si esto no debería ser 0x80
+    ldi r16, 0x7F
     out OCR0A, r16
 
 	; Modo Fast PWM, TOP = 0xFF
@@ -21,8 +21,8 @@ pwm_configurar:
     out TCCR0A, r16
 
     ; WGM02 = 0 (FastPWM / 0xFF)
-    ; Preescaler = 0
-    ; CS02 = 0; CS01 = CS00 = 1
+    ; Preescaler = 1024
+    ; CS02 = 1; CS01 = 0; CS00 = 1
     ldi r16, (0 << WGM02) | \
              (1 << CS02) | (0 << CS01) | (1 << CS00)
     out TCCR0B, r16

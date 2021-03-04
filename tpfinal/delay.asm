@@ -44,7 +44,7 @@ _delay1ms:
 ; Rutina de retardo variable de 1ms a 256ms
 ; r16 = Tiempo de retardo en milisegundos, 0 equivale a 256ms.
 delayms:
-	push r21 ; Guardar registros extra >= 16 (r21 usado por _delay1ms)
+	push r21
 	push r8
  delayms_loop:
 	call _delay1ms

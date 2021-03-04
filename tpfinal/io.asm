@@ -1,6 +1,6 @@
 io_configurar:
 	; Configurar 
-	;  - PORTD.2 (INT0) como entrada por interrupción 
+	;  - PORTD.2 (INT0) como entrada por interrupciÃ³n 
 	;  - PORTB.0 (ICP1) como salida para generar captura por software
 	;  - PORTB.5 (LED ARDUINO) como salida para debug
 	;  - PORTD.6 como salida PWM
@@ -14,7 +14,7 @@ io_configurar:
 	; PORTB.5 LED ARDUINO inicialmente apagado
 	cbi PORTB, DDB5
 
-	; INT0 responde al cualquier cambio lógico
+	; INT0 responde al cualquier cambio lÃ³gico
 	ldi r16, (0 << ISC01) | (1 << ISC00)
 	sts EICRA, r16
 	

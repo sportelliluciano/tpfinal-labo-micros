@@ -5,7 +5,7 @@
 .dseg 
 .equ PACKET_SZ = 4          ; 3 bytes + padding
 .equ BUFFER_SZ = (1 << 8)   ; 256 bytes = 64 paquetes
-BUFFER: .byte BUFFER_SZ     ; Búfer de 256 bytes = se aprovecha el overflow de enteros de 8 bits.
+BUFFER: .byte BUFFER_SZ     ; BÃºfer de 256 bytes = se aprovecha el overflow de enteros de 8 bits.
 
 .cseg
 buffer_init:
@@ -14,7 +14,7 @@ buffer_init:
 	ret
 
 ; Copia paq1:paq2:paq3 al buffer
-; Devuelve 0 si había espacio, FFFF en caso contrario.
+; Devuelve 0 si habÃ­a espacio, FFFF en caso contrario.
 buffer_push_packet:
 	push XL
 	push XH
@@ -49,7 +49,7 @@ bpp_fin:
 	ret
 
 
-; Copia un paquete del búfer en r6:r7:r8, devuelve 0x0000.
+; Copia un paquete del bÃºfer en r6:r7:r8, devuelve 0x0000.
 ; Si no hay datos devuelve 0xFFFF
 buffer_get_packet:
 	push XL
@@ -81,7 +81,7 @@ bgp_fin:
 	pop XL
 	ret
 
-; Copia un byte del búfer en r6, devuelve 0x0000.
+; Copia un byte del bÃºfer en r6, devuelve 0x0000.
 ; Si no hay datos devuelve 0xFFFF
 buffer_get_byte:
 	push XL

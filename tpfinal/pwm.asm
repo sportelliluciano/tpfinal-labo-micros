@@ -1,13 +1,13 @@
 pwm_configurar:
 	; Configurar PWM para tener un ciclo de 16.67ms (60Hz) a 16MHz.
 
-	; Considerando Fclk = 16MHz, preescaler = 1024 y que la resolución
+	; Considerando Fclk = 16MHz, preescaler = 1024 y que la resoluciÃ³n
 	; es de 8 bits:
-	; Tpwm = (1024 * 256) / 16.000.000Hz = 16.384ms => 60Hz ± 3%
-	; Referencia: Datasheet 14.7.3 (página 80)
+	; Tpwm = (1024 * 256) / 16.000.000Hz = 16.384ms => 60Hz Â± 3%
+	; Referencia: Datasheet 14.7.3 (pÃ¡gina 80)
 
     ; Duty inicial = 50%
-    ldi r16, 0x7F   ; Ver si esto no debería ser 0x80
+    ldi r16, 0x7F   ; Ver si esto no deberÃ­a ser 0x80
     out OCR0A, r16
 
 	; Modo Fast PWM, TOP = 0xFF

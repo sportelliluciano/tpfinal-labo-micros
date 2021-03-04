@@ -13,7 +13,7 @@ usart_configurar:
 	ldi r16, (1 << U2X0)
 	sts UCSR0A, r16
 
-    ; Activar transmisión y recepción USART.
+    ; Activar transmisiÃ³n y recepciÃ³n USART.
     ldi r16, (1 << RXEN0) | (1 << TXEN0) | (1 << UDRIE0)
     sts UCSR0B, r16
     

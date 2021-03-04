@@ -1,9 +1,9 @@
 ; ---------------------------- RUTINAS DE RETARDO ----------------------------
-; Cantidad de ciclos necesarios para retardar la ejecución durante 1ms.
+; Cantidad de ciclos necesarios para retardar la ejecuciÃ³n durante 1ms.
 ; Esta constante dividido 400 debe entrar en un registro para que la rutina 
 ; funcione correctamente. Esto limita las frecuencias de clock de 2MHz a 
 ; aproximadamente 100MHz. Dado que el microcontrolador funciona a 8MHz en Proteus
-; y a 16MHz en la placa Arduino no debería haber ningún problema.
+; y a 16MHz en la placa Arduino no deberÃ­a haber ningÃºn problema.
 ; Adicionalmente, cuando CLK_FREC_MHZ*1000 es divisible por 400, no se producen
 ; errores de redondeo. Esto sucede, en particular, para 8MHz y 16MHz.
 .equ CICLOS_PER_MS = CLK_FREC_MHZ * 1000
@@ -11,7 +11,7 @@
  .error "CICLOS_PER_MS / 400 debe entrar en un registro"
 .endif
 ; ***************************************************************************
-; **** Cálculo de la cantidad de ciclos tomados por la rutina de retardo ****
+; **** CÃ¡lculo de la cantidad de ciclos tomados por la rutina de retardo ****
 ; ***************************************************************************
 ; _delay1ms = call + ldi + mov + delay1ms_preloop + ldi + delay1ms_final + ret
 ; _delay1ms = 11 + delay1ms_preloop + delay1ms_final

@@ -77,6 +77,8 @@ def hear_port():
         port.write(b'L') # Enviar un byte para iniciar el programa
         t1 = time.time()
         n_muestras = 0
+        last_adc_packets = adc_packets = 0
+        last_pwm_packets = pwm_packets = 0
         while True:
             data = port.read(3)
             if len(data) != 3:
@@ -102,6 +104,7 @@ def hear_port():
                     x_data.append(x_data[-1] + TIME_BETWEEN_SAMPLES)
                     pwm_data.append(5 * pwm_is_low)
                     n_muestras += 1
+                adc_packets += 1
             elif tag == 0b00100000:
                 # TL del PWM
                 tlow, = struct.unpack(">H", data[1:])
@@ -109,6 +112,7 @@ def hear_port():
                     last_tlow = tlow
                     print('PWM Tlow:', tlow * 0.5e-3, 'ms')
                 pwm_is_low = not pwm_is_low
+                pwm_packets += 1
             elif tag == 0b00110000:
                 # TH del PWM
                 thigh, = struct.unpack(">H", data[1:])
@@ -116,11 +120,17 @@ def hear_port():
                     last_thigh = thigh
                     print('PWM Thigh:', thigh * 0.5e-3, 'ms')
                 pwm_is_low = not pwm_is_low
+                pwm_packets += 1
             
             if time.time() - t1 > 1:
                 muestras_por_segundo = n_muestras
                 n_muestras = 0
                 t1 = time.time()
+                print(f'{adc_packets=}, {pwm_packets=},', 
+                      f'ADC: {2 * (adc_packets - last_adc_packets)} muestras/seg,',
+                      f'PWM: {pwm_packets - last_pwm_packets} muestras/seg')
+                last_adc_packets = adc_packets
+                last_pwm_packets = pwm_packets
 
 def find_trigger(samples, level=1.5, number=1, default=0):
     trigger_edge = 'rising'

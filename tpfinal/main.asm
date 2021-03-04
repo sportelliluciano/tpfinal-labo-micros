@@ -4,8 +4,8 @@
 .def reth = r1 ; Byte alto de retornos
 .def zero = r2 ; Registro que siempre vale 0
 .def sreg_save = r3 ; Registro que almacena SREG durante ISRs.
-.def last_adch = r4 ; ⁄ltima mediciÛn del ADC (high)
-.def last_adcl1 = r5 ; ⁄ltima mediciÛn del ADC (low)
+.def last_adch = r4 ; √öltima medici√≥n del ADC (high)
+.def last_adcl1 = r5 ; √öltima medici√≥n del ADC (low)
 .def last_adcl2 = r9
 .def paq1 = r6
 .def paq2 = r7
@@ -21,7 +21,7 @@
 .org ADCCaddr
 	rjmp isr_adc
 
-.org INT_VECTORS_SIZE ; Inicio del cÛdigo
+.org INT_VECTORS_SIZE ; Inicio del c√≥digo
 
 .include "adc.asm"
 .include "io.asm"
@@ -46,7 +46,7 @@ main:
 	call buffer_init
 	; ------------------------------------------
 esperar_inicio:
-	; Esperar a que la PC nos envÌe algo para iniciar el programa.
+	; Esperar a que la PC nos env√≠e algo para iniciar el programa.
 	sbi PORTB, DDB5
 	ldi r16, 250
 	call delayms
@@ -105,10 +105,10 @@ isr_usart_tx_fin:
 	out SREG, sreg_save
 	reti
 
-; Agrega un paquete de 3 bytes al bufer de transmisiÛn
+; Agrega un paquete de 3 bytes al bufer de transmisi√≥n
 ; Los 3 bytes se obtienen de los registros paq1, paq2, paq3.
 ;
-; El paquete de transmisiÛn siempre tiene el siguiente formato:
+; El paquete de transmisi√≥n siempre tiene el siguiente formato:
 ; 00II DDDD DDDD DDDD DDDD DDDD
 ; Donde I representa un bit correspondiente al ID de paquete,
 ; y D representa un bit de datos.
@@ -119,29 +119,29 @@ isr_usart_tx_fin:
 ; Donde:
 ;  - El ID es 01
 ;  - A representa un bit de la primer muestra, siendo el bit 
-;    m·s a la izquierda el m·s significativo.
+;    m√°s a la izquierda el m√°s significativo.
 ;  - B representa un bit de la segunda muestra, siendo el bit
-;    m·s a la izquierda el m·s significativo.
+;    m√°s a la izquierda el m√°s significativo.
 ; La primera muestra se debe haber obtenido temporalmente antes
 ; que la segunda.
 ;
-; - Paquete de datos del PWM (1): contiene el tiempo que la seÒal
-;   del PWM est· en nivel lÛgico bajo.
+; - Paquete de datos del PWM (1): contiene el tiempo que la se√±al
+;   del PWM est√° en nivel l√≥gico bajo.
 ;   0010 0000 HHHH HHHH LLLL LLLL
 ; Donde:
 ;   - El ID es 10
 ;   - H representa bits del byte alto, L del byte bajo, siendo el
-;     bit de m·s a la izquierda el m·s significativo.
+;     bit de m√°s a la izquierda el m√°s significativo.
 ;
-; - Paquete de datos del PWM (2): contiene el tiempo que la seÒal
-;   del PWM est· en nivel lÛgico alto.
+; - Paquete de datos del PWM (2): contiene el tiempo que la se√±al
+;   del PWM est√° en nivel l√≥gico alto.
 ;   0011 0000 HHHH HHHH LLLL LLLL
 ; Donde:
 ;   - El ID es 11
 ;   - H representa bits del byte alto, L del byte bajo, siendo el
-;     bit de m·s a la izquierda el m·s significativo.
+;     bit de m√°s a la izquierda el m√°s significativo.
 ;
-; Un paquete que no empiece en 00 ser· rechazado por el host.
+; Un paquete que no empiece en 00 ser√° rechazado por el host.
 push_packet:
 	push r24
 	call buffer_push_packet
@@ -169,7 +169,7 @@ isr_adc:
 	; else: save_first
 	lds last_adcl1, ADCL ; Leer el low primero
 	lds r16, ADCH 
-	andi r16, 0b00000011 ; Asegurarse que los bits m·s significativos son 0.
+	andi r16, 0b00000011 ; Asegurarse que los bits m√°s significativos son 0.
 	ori r16, (1 << 7)
 	mov last_adch, r16   ; last_adch = 0b10000000 | ADCH
 	rjmp isr_adc_fin
@@ -179,7 +179,7 @@ isr_adc_save_second:
 	lsl last_adch
 	lsl last_adch
 	lds r16, ADCH        ; r16 = (last_adch << 2) | ADCH
-	andi r16, 0b00000011 ; Asegurarse que los bits m·s significativos son 0.
+	andi r16, 0b00000011 ; Asegurarse que los bits m√°s significativos son 0.
 	or r16, last_adch
 
 	; Push packet to tx queue: 0001 AABB AAAA AAAA BBBB BBBB

@@ -93,22 +93,46 @@ isr_usart_tx:
 
 isr_adc:
 	in sreg_save, SREG
+	; Los paquetes que llevan información de ADC contienen
+	; dos muestras en cada uno para aprovechar mejor los 
+	; 24 bytes.
+	; Cada una de estas muestras es de 10 bits, dejando
+	; 4 bits para el identificador de paquete.
+	; Si nombramos a la primer muestra 'A' y a la segunda 'B',
+	; el paquete quedaría codificado como
+	; 0001 aabb aaaa aaaa bbbb bbbb
+	; Donde 0001 es el ID de paquete, a y b representan bits
+	; de la muestra a y b respectivamente. 
+	; El bit más significativo es el que está más a la izquierda.
+	;
+	; Esta rutina, por lo tanto, debe ser llamada dos veces
+	; (una para la primer muestra, una para la segunda) para
+	; generar un paquete.
+	;
+	; Al llamarse la primera vez almacenará en last_adcl1 y
+	; last_adch la muestra obtenida; agregando en last_adch
+	; el bit de ID de paquete, que será usado también como
+	; bandera para indicar que ya se leyó la primer medición.
 	lds last_adcl2, ADCL       ; Leer primero ADCL
 	lds isr_tmp1, ADCH         ; isr_tmp1 = ADCH
 	andi isr_tmp1, 0b00000011  ; Asegurarse que los bits más significativos son 0.
-	sbrc last_adch, 7          ; if last_adch.7:
+	sbrc last_adch, 7          ; if last_adch.2:
 	rjmp isr_adc_medicion_dos  ;     es medicion 2
+	; es medicion 1:
 	mov last_adcl1, last_adcl2 ; Mover medicion a last_adcl1
-	ori isr_tmp1, 0b10000100   ; Marcar en last_adch que ya tenemos
-	mov last_adch, isr_tmp1    ; una medición y agregar el bit de ID
+	ori isr_tmp1, 0b10000100   ; Agregar el bit de ID a last_adch y un bit que
+	mov last_adch, isr_tmp1    ; indicará también que ya tenemos una medición (bit 7)
 	rjmp isr_adc_fin           ; last_adch = 0b10000100 | ADCH
-isr_adc_medicion_dos:          ; Notar que el bit de ID está dos posiciones
-	lsl last_adch              ; desplazado. Se corregirá al agregar la 
-	lsl last_adch              ; segunda medición
+	                           ; Notar que el bit de ID está dos posiciones
+	                           ; desplazado. Se corregirá al agregar la 
+							   ; segunda medición.
+isr_adc_medicion_dos:          ; Mover last_adch 2 posiciones a la izquierda.
+	lsl last_adch              ; Esto borra el flag (bit 7) y acomoda el ID en la
+	lsl last_adch              ; posición correcta.
 	or isr_tmp1, last_adch     ; last_adch = (last_adch << 2) | ADCH
 	mov paq1, isr_tmp1
 	mov paq2, last_adcl1
-	mov paq3, last_adcl2
+	mov paq3, last_adcl2       ; usart_push_packet(ID | (ADCH1 << 2) | ADCH2, ADCL1, ADCL2)
 	call usart_push_packet     ; usart_push_packet(0001 AABB, AAAA AAAA, BBBB BBBB)
 isr_adc_fin:
 	out SREG, sreg_save
